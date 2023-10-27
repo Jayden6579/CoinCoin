@@ -36,12 +36,6 @@
             background-size: cover;
         }
 
-        .special-square {
-            background-image: url('Special-Coin.png');
-            width: 25px;
-            height: 25px;
-        }
-
         #score {
             color: white;
             font: message-box;
@@ -141,7 +135,7 @@
         <div id="player"></div>
     </div>
     <div id="score">Coins: 0</div>
-    <div id="timer">Time Left: 10</div>
+    <div id="timer">Time Left: 30</div>
     <button id="start-button">Start</button>
     <div id="win">Your Coins: 0</div>
 
@@ -174,16 +168,23 @@
         player.style.top = playerY + "px";
 
         let gameStarted = false;
+        let regularSquareTimer;
+        let gameLoopInterval;
 
         function startGame() {
-            gameStarted = true;
-            document.getElementById("start-button").style.display = "none"; // Hide the start buttona
+    gameStarted = true;
+    document.getElementById("start-button").style.display = "none";
 
-            // Start the game loop and timer
-            gameLoopInterval = setInterval(createSquare, 1000);
-            createSquare(); // Create the first square immediately
-            timerInterval = setInterval(updateTimeLeft, 1000);
-        }
+    // Start the game loop
+    gameLoopInterval = setInterval(function () {
+        createSquare(); // Create regular squares
+    }, 1500); // Adjust the interval as needed
+
+    // Start the timer for regular squares with a different interval
+    regularSquareTimer = setInterval(createSquare, 2000); // Regular squares every 2 seconds
+
+    timerInterval = setInterval(updateTimeLeft, 1000);
+}
 
         document.getElementById("start-button").addEventListener("click", startGame);
 
@@ -206,49 +207,62 @@
         let timeIsUp = false; // New flag to track if time is up
 
         function createSquare() {
+    if (gameIsOver || timeIsUp) {
+        return;
+    }
+
+    // Randomly determine the number of regular squares to create in each call
+    const numberOfSquaresToCreate = Math.random() < 0.5 ? 1 : 3; // Adjust the probability as needed
+
+    for (let i = 0; i < numberOfSquaresToCreate; i++) {
+        const square = document.createElement("div");
+        square.classList.add("square");
+
+        // Calculate the random position for the regular square
+        const minLeft = leftButton.getBoundingClientRect().right;
+        const maxLeft = rightButton.getBoundingClientRect().left - square.offsetWidth;
+        square.style.left = Math.random() * (maxLeft - minLeft) + minLeft + "px";
+
+        square.style.top = "0";
+        gameContainer.appendChild(square);
+
+        const squareInterval = setInterval(function () {
             if (gameIsOver || timeIsUp) {
+                clearInterval(squareInterval);
                 return;
             }
 
-            const square = document.createElement("div");
-            square.classList.add("square");
+            const squareTop = square.offsetTop;
+            if (squareTop > gameContainer.clientHeight) {
+                clearInterval(squareInterval);
+                gameContainer.removeChild(square);
+            } else {
+                square.style.top = squareTop + squareSpeed + "px";
 
-            // Calculate the random position within the area between the right side of the left button and the left side of the right button
-            const minLeft = leftButton.getBoundingClientRect().right; // Right side of the left button
-            const maxLeft = rightButton.getBoundingClientRect().left - square.offsetWidth; // Left side of the right button minus square width
-            square.style.left = Math.random() * (maxLeft - minLeft) + minLeft + "px";
-
-            square.style.top = "0";
-            gameContainer.appendChild(square);
-
-            const squareInterval = setInterval(function () {
-                if (gameIsOver || timeIsUp) {
-                    clearInterval(squareInterval);
-                    return;
-                }
-
-                const squareTop = square.offsetTop;
-                if (squareTop > gameContainer.clientHeight) {
+                // Check for collision with the player and collect the regular square
+                if (
+                    squareTop + square.offsetHeight > parseInt(player.style.top) &&
+                    parseInt(player.style.top) + player.offsetHeight > squareTop &&
+                    playerX + playerWidth > parseInt(square.style.left) &&
+                    playerX < parseInt(square.style.left) + square.offsetWidth
+                ) {
                     clearInterval(squareInterval);
                     gameContainer.removeChild(square);
-                } else {
-                    square.style.top = squareTop + squareSpeed + "px";
-
-                    if (
-                        squareTop + square.offsetHeight > parseInt(player.style.top) &&
-                        parseInt(player.style.top) + player.offsetHeight > squareTop &&
-                        playerX + playerWidth > parseInt(square.style.left) &&
-                        playerX < parseInt(square.style.left) + square.offsetWidth
-                    ) {
-                        clearInterval(squareInterval);
-                        gameContainer.removeChild(square);
-                        score += 1;
-                        updateScore();
-                        updateReceivedCoins(); // Update received coins
-                    }
+                    score += 1;
+                    updateScore();
+                    updateReceivedCoins();
                 }
-            }, 10);
-        }
+            }
+        }, 10);
+    }
+
+    // Adjust the interval for creating regular squares for variability
+    const createSquareInterval = Math.random() * 2000 + 1000; // Random interval between 1 to 3 seconds
+    setTimeout(createSquare, createSquareInterval);
+}
+
+       
+
 
         function updateReceivedCoins() {
             const receivedCoins = document.getElementById("received-coins");
@@ -310,7 +324,7 @@
             clearTimeout(rightButtonTimeout);
         });
 
-        let timeLeft = 10; // Initial time in seconds
+        let timeLeft = 30; // Initial time in seconds
 
         function updateTimeLeft() {
             if (timeLeft > 0 && !gameIsOver) {
@@ -328,6 +342,7 @@
             rightButton.disabled = true;
 
             clearInterval(gameLoopInterval);
+            clearInterval(regularSquareTimer);
             clearInterval(timerInterval);
 
             const endGameMessage = document.getElementById("end-game-message");
@@ -350,7 +365,7 @@
             const coinsInput = document.getElementById("coins");
             coinsInput.value = score; // Update the value of the "coins" input field
 
-            // Now, you can submit the form
+            // Now,can submit the form
             const form = document.querySelector("form");
             form.submit();
         });
